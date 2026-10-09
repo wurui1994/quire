@@ -47,7 +47,10 @@ def _cmd_list(args) -> None:
           f"{sum(len(v.files) for v in book.volumes)} 篇 · {book.root}")
     for volume in book.volumes:
         tag = volume.label or volume.kind
-        head = f"· {volume.id}  《{volume.title}》 {volume.subtitle}  [{tag}]"
+        head = f"· {volume.id}  《{volume.title}》"
+        if volume.subtitle:
+            head += f" {volume.subtitle}"
+        head += f"  [{tag}]"
         if words:
             count = volume_words(book, volume)
             grand += count

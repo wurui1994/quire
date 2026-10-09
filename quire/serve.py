@@ -20,6 +20,7 @@ from .blog import (strip_first_h1, extract_tags, estimate_reading_time,
                            chapter_number, blog_volume_label,
                            build_onpage_toc, build_global_toc)
 from .html_builder import assemble_reader_page, render_all_reader
+from .index import volume_row_name
 
 
 class PreviewServer:
@@ -69,7 +70,7 @@ class PreviewServer:
                                  is_preface=volume.is_preface)
         cover_css = f"<style>{config.COVER_CSS}</style>" if cover else ""
         toc_html = build_single_volume_toc_html(headings)
-        html = assemble_reader_page(title=volume.title, brand=volume.subtitle,
+        html = assemble_reader_page(title=volume.title, brand=volume.subtitle or config.SERIES,
                                     body=cover + fragment, toc_html=toc_html,
                                     extra_css=cover_css, indent=self.indent)
         self.page_cache[volume_id] = (html, current)
@@ -216,7 +217,7 @@ class PreviewServer:
 
     def _render_home(self, volumes) -> str:
         rows = "\n".join(
-            f'<li><span class="t">{volume.subtitle}　<b>{volume.title}</b></span>'
+            f'<li><span class="t">{volume_row_name(volume)}</span>'
             f'<span class="l"><a href="/{volume.id}">阅读</a></span></li>'
             for volume in volumes)
         all_link = '<a href="/all">全卷</a>'

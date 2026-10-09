@@ -224,7 +224,7 @@ def _write_epub(book: epub.EpubBook, out_path: Path) -> None:
 
 
 def build_epub_py(volume: Volume) -> Path:
-    title = f"{volume.title}（{volume.subtitle}）"
+    title = f"{volume.title}（{volume.subtitle}）" if volume.subtitle else volume.title
     identifier = "urn:uuid:" + hashlib.md5(volume.id.encode()).hexdigest()
 
     title_page = _RawXhtml(
@@ -307,7 +307,7 @@ def build_all_epub_py(volumes: List[Volume]) -> Path:
             first_ch_num = ch_counter - len(vol_chapters) + 1
             first_href = f"text/ch{first_ch_num:03d}.xhtml#{last_vol_headings[0][0]}"
             toc.append((epub.Section(
-                f"{volume.subtitle}　{volume.title}", first_href),
+                volume.heading, first_href),
                 tuple(vol_toc_children)))
         elif vol_toc_children:
             toc.extend(vol_toc_children)
@@ -338,7 +338,8 @@ def _pandoc_epub(out, files: List[str], title: str) -> None:
 
 def build_epub_pandoc(volume: Volume) -> Path:
     out = config.DIST / f"{volume.id}.epub"
-    _pandoc_epub(out, volume.files, f"{volume.title}（{volume.subtitle}）")
+    _pandoc_epub(out, volume.files,
+                 f"{volume.title}（{volume.subtitle}）" if volume.subtitle else volume.title)
     return out
 
 

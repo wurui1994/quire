@@ -46,7 +46,7 @@ def build_volume_html(volume: Volume, *, indent: bool = False,
     extra_css = f"<style>{config.COVER_CSS}</style>" if cover else ""
     headings = extract_headings(fragment)
     toc_html = build_single_volume_toc_html(headings)
-    html = assemble_reader_page(title=volume.title, brand=volume.subtitle,
+    html = assemble_reader_page(title=volume.title, brand=volume.subtitle or config.SERIES,
                                 body=cover + fragment, toc_html=toc_html,
                                 extra_css=extra_css, indent=indent)
     out = config.DIST / f"{volume.id}.html"

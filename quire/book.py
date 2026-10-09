@@ -7,7 +7,7 @@
 
 - 散置单文件：
     preface.md / 前言.md / 序.md / intro.md / readme.md → 前置卷（kind="front"）
-    其余 *.md（如 正文目录.md）                       → 附录卷（kind="extra"）
+    其余 *.md（如 正文目录.md）为工作草稿，不构建（可由 [[volume]] 显式认领）
 - 子目录：
     含 目录.md / toc.md / _toc.md / summary.md，或含 chapters/
       → 正卷（kind="main"，id=目录名）
@@ -15,7 +15,10 @@
     既无目录又无 chapters/、只有裸 md 的目录
       → 跳过（草稿区，可由 [[volume]] 显式认领）
     直接叫 chapters/ 的目录
-      → 单卷书的正文（id="main"）
+      → 单卷书的正文（id="main"，副标题"正文"）
+
+阅读顺序：前置卷在前，子目录卷在后。子目录卷按 volN / 卷N
+前缀自然序排列（vol0-副名 这类带后缀的目录同样按数字排），其余按名序。
 
 quire.toml
 ==========
@@ -98,9 +101,9 @@ def _natural_key(text: str) -> list:
 
 
 def _volume_sort_key(path: Path) -> tuple:
-    """卷目录排序：volN/卷N 自然序在前，其余目录按名序在后。"""
+    """卷目录排序：volN/卷N 自然序在前（允许 vol0-副名 式后缀），其余按名序。"""
     name = path.name
-    for pattern in (r'^vol(\d+)$', r'^卷(\d+)$'):
+    for pattern in (r'^vol(\d+)(?:[-_].*)?$', r'^卷(\d+)(?:[-_].*)?$'):
         match = re.match(pattern, name)
         if match:
             return (0, int(match.group(1)), name)
@@ -122,8 +125,12 @@ def _chapter_sort_key(path: Path, front_prefixes: tuple) -> tuple:
 
 # ---------------------------------------------------------------- 标题解析
 
-def parse_volume_title(first_line: str, series: str) -> Tuple[str, str]:
-    """从目录/首页首行解析 (主标题, 副标题)。支持四种书写格式。"""
+def parse_volume_title(first_line: str) -> Tuple[str, str]:
+    """从目录/首页首行解析 (主标题, 副标题)。支持四种书写格式。
+
+    副标题只取目录行显式写出的部分（如 （卷一·分篇）），未写出则为空——
+    不回填丛书名，否则目录里每卷都顶着丛书名前缀。
+    """
     line = first_line.strip()
 
     # 格式A: # 《...》（...）目录
@@ -149,7 +156,7 @@ def parse_volume_title(first_line: str, series: str) -> Tuple[str, str]:
             subtitle = parts[0]
         else:
             title = title_raw
-            subtitle = series
+            subtitle = ""
         return title, subtitle
 
     # 格式C: # 卷X　标题
@@ -160,9 +167,9 @@ def parse_volume_title(first_line: str, series: str) -> Tuple[str, str]:
     # 格式D: # 纯标题
     match = re.match(r'^#\s*(.+?)$', line)
     if match:
-        return match.group(1), series
+        return match.group(1), ""
 
-    return line.lstrip('#').strip(), series
+    return line.lstrip('#').strip(), ""
 
 
 def _first_line(path: Path) -> str:
@@ -243,14 +250,14 @@ def _auto_discover(book: "Book") -> List[Volume]:
 
     volumes: List[Volume] = []
 
-    # 1) 散置单文件：前置类在前，其余按自然序
-    loose = sorted(content.glob("*.md"),
-                   key=lambda p: (0 if _is_front_stem(p.stem) else 1, _natural_key(p.stem)))
+    # 1) 散置单文件：前言类 → 前置卷；其余为工作草稿，不构建
+    loose = sorted(content.glob("*.md"), key=lambda p: _natural_key(p.stem))
     for path in loose:
-        kind = "front" if _is_front_stem(path.stem) else "extra"
+        if not _is_front_stem(path.stem):
+            continue
         title = _first_h1(path) or path.stem
         volumes.append(Volume(path.stem, title, book.series,
-                               [str(path.relative_to(root))], kind=kind))
+                               [str(path.relative_to(root))], kind="front"))
 
     # 2) 子目录 → 卷
     for directory in sorted((p for p in content.iterdir() if p.is_dir()),
@@ -263,11 +270,11 @@ def _auto_discover(book: "Book") -> List[Volume]:
                 files = [str(p.relative_to(root)) for p in
                          sorted(directory.glob("*.md"),
                                 key=lambda p: _chapter_sort_key(p, book.front_prefixes))]
-                volumes.append(Volume("main", book.series, book.series, files))
+                volumes.append(Volume("main", book.series, "正文", files))
             continue  # 其余无目录无章节的目录：草稿区，跳过
 
         if toc is not None:
-            title, subtitle = parse_volume_title(_first_line(toc), book.series)
+            title, subtitle = parse_volume_title(_first_line(toc))
         else:
             title, subtitle = directory.name, book.series
         files = collect_volume_files(directory, root, book.front_prefixes)
@@ -303,7 +310,7 @@ def _volume_from_spec(book: "Book", spec: dict) -> Volume:
     # 标题回退链：显式 > 目录首行 > 首文件首 H1 > 目录名 > 卷 id
     toc = _find_toc(base) if base != book.root else None
     if toc is not None:
-        parsed_title, parsed_subtitle = parse_volume_title(_first_line(toc), book.series)
+        parsed_title, parsed_subtitle = parse_volume_title(_first_line(toc))
     else:
         parsed_title, parsed_subtitle = "", ""
     first_file_title = (_first_h1(book.root / files[0]) or "") if files else ""

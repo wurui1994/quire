@@ -100,7 +100,8 @@ def build_all_volumes_toc_html(volume_headings) -> str:
     """
     items: List[TocItem] = []
     for volume_id, subtitle, title, headings in volume_headings:
-        items.append((f"vol-{volume_id}", 1, f"{subtitle}　{title}", "vol-link"))
+        text = f"{subtitle}　{title}" if subtitle else title
+        items.append((f"vol-{volume_id}", 1, text, "vol-link"))
         for heading_id, level, text in headings:
             items.append((heading_id, min(level + 1, 3), text, ""))
     return render_toc_tree(build_toc_tree(items), collapse_from=1, article_level=2)

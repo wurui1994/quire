@@ -77,7 +77,7 @@ def build_pdf_bookmarks(volumes):
     for volume in volumes:
         fragment = render_markdown(volume.files)
         headings = extract_pdf_headings(fragment)
-        items.append((1, f"@@{volume.id}@@", f"{volume.subtitle}　{volume.title}"))
+        items.append((1, f"@@{volume.id}@@", volume.heading))
         for level, text in headings:
             items.append((min(level + 1, 3), f"@@{volume.id}@@{text}@@", text))
 
@@ -735,8 +735,8 @@ def build_pdf_fitz(volume: Volume) -> Path:
     toc_html = (_strip_ids(render_markdown([toc_file], math_format="html"))
                 if toc_file else None)
     cover = (f'<h1 class="cover-title">{volume.title}</h1>'
-             f'<h2 class="cover-sub">{volume.subtitle}</h2>'
-             f'<p class="cover-series">{config.SERIES}丛书</p>'
+             + (f'<h2 class="cover-sub">{volume.subtitle}</h2>' if volume.subtitle else "")
+             + f'<p class="cover-series">{config.SERIES}丛书</p>'
              f'<p class="cover-date">{config.PUB_DATE_DISPLAY}</p>')
     css = _fitz_css(*_subset_fonts(_collect_chars(cover, fragment, toc_html or "")))
     out = config.DIST / f"{volume.id}.pdf"
@@ -807,8 +807,8 @@ def build_all_pdf_fitz(volumes: List[Volume]) -> Path:
         toc_html = (_strip_ids(render_markdown([toc_file], math_format="html"))
                     if toc_file else None)
         cover = (f'<h1 class="cover-title">{volume.title}</h1>'
-                 f'<h2 class="cover-sub">{volume.subtitle}</h2>'
-                 f'<p class="cover-series">{config.SERIES}丛书</p>'
+                 + (f'<h2 class="cover-sub">{volume.subtitle}</h2>' if volume.subtitle else "")
+                 + f'<p class="cover-series">{config.SERIES}丛书</p>'
                  f'<p class="cover-date">{config.PUB_DATE_DISPLAY}</p>')
         prepared.append((volume, cover, toc_html, file_htmls, id_entries))
 
@@ -835,7 +835,7 @@ def build_all_pdf_fitz(volumes: List[Volume]) -> Path:
         remaining_files = sum(len(prepared[j][0].files) for j in range(i + 1, n))
         est_remaining = round(remaining_files * ratio)
         set_total("排版 PDF", get_completed("排版 PDF") + max(est_remaining, 1))
-        toc.append([1, f"{volume.subtitle}　{volume.title}", page_offset + 1])
+        toc.append([1, volume.heading, page_offset + 1])
         page_offset = _lay_volume(writer, mediabox, where, css, cover, toc_html,
                                   file_htmls, id_entries, toc, base_level=1,
                                   page_offset=page_offset)

@@ -2,7 +2,8 @@
 
 - Volume.id        卷标识（如 "preface" / "vol1" / "supplement"）
 - Volume.title     主标题
-- Volume.subtitle  副标题（默认为丛书名，用作页面品牌标识）
+- Volume.subtitle  副标题（卷号等标记，未写出则留空；用作页面品牌标识）
+- Volume.heading   目录/书签处的一行卷名（副标题在前，空则仅主标题）
 - Volume.files     源文件相对书根的路径列表
 - Volume.label     侧栏 / 博客分组显示名（空则回退 subtitle）
 - Volume.kind      front（序/前言）/ main（正卷）/ extra（附录/补充）
@@ -29,6 +30,11 @@ class Volume:
     @property
     def is_preface(self) -> bool:
         return self.kind == "front"
+
+    @property
+    def heading(self) -> str:
+        """目录/书签处的一行卷名：「副标题　主标题」，无副标题则仅主标题。"""
+        return f"{self.subtitle}　{self.title}" if self.subtitle else self.title
 
 
 def standard_volume_count(volumes: List[Volume]) -> int:
