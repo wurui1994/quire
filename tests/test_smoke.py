@@ -36,6 +36,12 @@ def main() -> None:
 
         # 3) 新建章节（自动补号）
         new_chapter(book, "vol1/第二章", "第二章标题")
+        ch2 = root / "book" / "vol1" / "chapters" / "ch02-第二章.md"
+        ch2.write_text(
+            "# 第二章标题\n\n"
+            "**第六样，自我执行。**判决生效之后，它自己找证据。\n"
+            "字面 \\*\\*不是加粗\\*\\* 不动；`**代码**` 不动；a ** b ** c 不动。\n",
+            encoding="utf-8")
         book.rescan()
         names = [Path(f).name for f in book.volumes[0].files]
         assert names == ["目录.md", "ch01-开篇.md", "ch02-第二章.md"], names
@@ -49,6 +55,12 @@ def main() -> None:
         assert "测试书" in html
         assert "第二章标题" in html
         assert 'id="vol-vol1"' in html          # 默认封面已嵌入
+        # AI 中文紧贴加粗修复：失败的 **……。**判决 → strong；
+        # 转义星号 / 行内码 / 空隙写法保持字面
+        assert "<strong>第六样，自我执行。</strong>判决生效" in html
+        assert "**不是加粗**" in html
+        assert "<code>**代码**</code>" in html
+        assert "a ** b ** c" in html
         assert (book.dist / "vol1.epub").stat().st_size > 1000
 
         # 5) CLI：list（子进程，验证 python -m quire 入口与 -d 定位）

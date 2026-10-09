@@ -3,12 +3,14 @@
 负责把仓库中的 .md 源文件渲染为 HTML 片段，包含：
 - markdown-it-py 实例构建（含脚注 / 定义列表 / 锚点 / 行内数学插件）
 - 渲染前预处理：中文弯引号、Pandoc 风格上标
+- 渲染中修复：AI 中文紧贴加粗（core rule，见 _repair_failed_strong）
 - 渲染后处理：dollarmath 占位 span/div → MathML（默认，浏览器/EPUB 用）
   或 HTML 上/下标（fitz PDF 用，因其 Story 引擎不支持 MathML）
 - 标题 slug 生成
 """
 
 import re
+import unicodedata
 from typing import List
 
 from . import config
@@ -36,8 +38,78 @@ def get_markdown_renderer():
     deflist_plugin(md)
     anchors_plugin(md, min_level=1, max_level=3)
     dollarmath_plugin(md)
+    md.core.ruler.after("inline", "repair_failed_strong", _repair_failed_strong)
     _MDIT = md
     return _MDIT
+
+
+# --------------------------------------------------------------- AI 紧贴加粗修复
+
+_TIGHT_STRONG = re.compile(r"\*\*([^\s*](?:[^*]*[^\s*])?)\*\*")
+_PUNCT_CACHE: dict = {}
+
+
+def _is_punct(char: str) -> bool:
+    """Unicode 标点判定（P* 类别），逐字符缓存。"""
+    known = _PUNCT_CACHE.get(char)
+    if known is None:
+        known = unicodedata.category(char).startswith("P")
+        _PUNCT_CACHE[char] = known
+    return known
+
+
+def _fix_failed_strong_text(content: str):
+    """把 text 令牌里渲染失败的紧贴加粗对改写为 strong 令牌序列。
+
+    CommonMark 侧翼规则下，AI 中文常见的紧贴加粗会失败留成字面星号：
+    闭合 ** 前是标点且后紧跟文字（**……。**判决），或开启 ** 后是标点
+    且前是文字（他**“话”**完）。失败的整对留在同一 text 令牌里，这里
+    按「紧贴（首尾无空隙）且内侧至少一端贴标点」识别；空隙装饰写法
+    （a ** b ** c）、行内码与代码块（独立令牌）不受影响，转义星号
+    （\\*\\*字面\\*\\*，内侧贴字母）也不会误伤。
+    """
+    from markdown_it.token import Token
+
+    pieces = []
+    pos = 0
+    repaired = False
+    for match in _TIGHT_STRONG.finditer(content):
+        inner = match.group(1)
+        if not (_is_punct(inner[0]) or _is_punct(inner[-1])):
+            continue
+        repaired = True
+        if match.start() > pos:
+            pieces.append(Token("text", "", 0, content=content[pos:match.start()]))
+        pieces.append(Token("strong_open", "strong", 1))
+        pieces.append(Token("text", "", 0, content=inner))
+        pieces.append(Token("strong_close", "strong", -1))
+        pos = match.end()
+    if not repaired:
+        return None
+    if pos < len(content):
+        pieces.append(Token("text", "", 0, content=content[pos:]))
+    return pieces
+
+
+def _repair_failed_strong(state) -> None:
+    """markdown-it core rule：在 inline 解析后修复失败的紧贴加粗对。"""
+    for block in state.tokens:
+        children = getattr(block, "children", None)
+        if not children:
+            continue
+        new_children = []
+        touched = False
+        for child in children:
+            pieces = None
+            if child.type == "text" and "**" in child.content:
+                pieces = _fix_failed_strong_text(child.content)
+            if pieces is not None:
+                new_children.extend(pieces)
+                touched = True
+            else:
+                new_children.append(child)
+        if touched:
+            block.children = new_children
 
 
 def normalize_cjk_quotes(source: str) -> str:

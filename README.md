@@ -145,7 +145,7 @@ def build_cover_html(cover_id, title, subtitle, *,
 
 - **`book.py`** Book / quire.toml 解析 / 卷自动发现 / 显式 `[[volume]]` 合并 / 字数统计
 - **`config.py`** 活动书籍上下文：`config.activate(book)` 后，各构建模块以 `config.SERIES` 这类属性访问取值（PEP 562 `__getattr__` 转发到活动 Book），使单进程多书成为可能
-- **`renderer.py`** markdown-it 渲染：脚注 / 定义列表 / 标题锚点 / 数学（HTML 与 MathML 两态）/ 中文引号归一
+- **`renderer.py`** markdown-it 渲染：脚注 / 定义列表 / 标题锚点 / 数学（HTML 与 MathML 两态）/ 中文引号归一 / AI 中文紧贴加粗自动修复（CommonMark 侧翼规则下 `**……。**判决` 这类无空隙写法无法闭合，会留成字面星号；渲染管线自动改写为真正的加粗，空隙写法、行内码与转义星号不受影响）
 - **`html_builder.py` / `cover.py`** 阅读本页面与封面（默认排版式封面 + 项目插件钩子）
 - **`epub.py`** ebooklib 引擎（EPUB3、无障碍元数据、ibooks display-options）+ pandoc 后备引擎
 - **`pdf.py`** fitz Story 排版引擎（按文件分片排版避免单文档二次方开销；页脚 / 书签 / `garbage=4` 去重）+ Playwright 打印引擎
