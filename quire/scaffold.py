@@ -48,7 +48,7 @@ author = {author}
 _README_TEMPLATE = """\
 # {title}
 
-本仓库由 [quire](https://github.com/) 构建：Markdown → HTML / EPUB / PDF。
+本仓库由 [quire](https://github.com/wurui1994/quire) 构建：Markdown → HTML / EPUB / PDF。
 
 ```sh
 quire serve          # 本地预览 http://localhost:8000
