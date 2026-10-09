@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{series}}丛书 · 博客</title>
+<style>{{css}}</style>
+</head>
+<body class="blog-index">
+
+<div class="toolbar">
+  <span class="brand">{{brand}}</span>
+  <span class="tools">
+    <button id="btn-dark" title="暗色模式">◐</button>
+  </span>
+</div>
+
+<div class="progress-bar"></div>
+
+<main class="blog-home">
+  <header class="home-head" id="top">
+    <h1>{{series}}丛书 · 博客</h1>
+    <p class="sub">把每一章当作一篇独立的文章来读。以下是全部 {{count}} 篇文章的全局目录，按卷归档，可点击卷名跳转。</p>
+  </header>
+
+  <nav class="vol-nav">
+    {{vol_nav}}
+  </nav>
+
+  {{groups}}
+</main>
+
+<button id="to-top" class="to-top" type="button" aria-label="回到顶部" title="回到顶部">↑</button>
+
+<script>{{js}}</script>
+</body>
+</html>

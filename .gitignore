@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+.DS_Store
+.pytest_cache/
+
+# 字体二进制与子集缓存不入库（--cache-font 的目标由项目 [fonts] dir 指定）
+quire/assets/fonts/

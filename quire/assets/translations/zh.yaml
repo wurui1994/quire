@@ -1,0 +1,16 @@
+# 中文 UI 术语翻译（供 pandoc EPUB 构建本地化模板词使用）。
+#
+# 背景（KB-003）：pandoc 3.10 的二进制未随附中文翻译数据，构建 EPUB 时设
+#   -M lang=zh-CN 会报两行告警：
+#     [WARNING] Could not load translations for zh-CN  translations/zh.yaml:
+#     [WARNING] The term Abstract has no translation defined.
+#   这仅影响模板 UI 词（如封面/元数据中 "Abstract" 标题），不影响正文，但属噪音。
+#   故在项目内提供该文件，并通过 epub.py 的 --data-dir 指向本 assets 目录让
+#   pandoc 找到它（内置模板/CSS 仍回退到 pandoc 自带，不受影响）。
+#
+# 注意：术语名必须首字母大写、且为 pandoc Term 构造器的合法名，否则加载时会报
+#   "Invalid Term name X"。当前只列构建中实际出现的 Abstract；如需更多，请逐项
+#   验证后追加（常见合法名：Contents / Preface / References / Bibliography /
+#   Chapter / Figure / Table / Index / Appendix / Part / Note / Notes 等）。
+---
+Abstract: 摘要

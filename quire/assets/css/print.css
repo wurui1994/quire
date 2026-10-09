@@ -1,0 +1,241 @@
+/* ============================================================
+   fitz / PyMuPDF Story 输出样式
+   目标：逆向逼近 browser（Chromium 打印）的 PDF 观感。
+   参数由 fitz 解析 vol0.browser.pdf 反推：
+     · 正文 12pt，行高 2.0（相邻基线 24pt）
+     · 字体：STSongti-SC（宋体衬线，与 browser 同款），经 @font-face 嵌入
+     · 颜色：ink #1d1b17；strong 同色不加红
+     · 标题 h1=24 / h2=15 / h3=13.2pt，居中加粗
+     · 页边距：左/右 39pt，上 35pt
+   注意：PyMuPDF 的 CSS 引擎不识别 var() 与相对 url，
+        故此处用字面色值，字体路径用 __FONTS_DIR__ 占位（构建时替换为绝对路径）。
+   ============================================================ */
+
+/* ============================================================
+   【已知问题 KB-001】跨页 blockquote 顶部「幽灵色带」
+   ------------------------------------------------------------
+   现象
+     用 fitz(Story) 引擎导出的 PDF，从第 2 页起，每一张后续页的
+     版心顶部都漏出一条淡色横带（色值 #f8f5f1，正是 blockquote
+     的背景色），无文字、贯穿左右，破坏排版一致性。
+
+   根因（发行版 mupdf 1.29 的 Story 分页缺陷，非本仓库代码）
+     Story 逐页排版时用「skip」机制跳过上一页已排完的内容：
+     source/html/html-layout.c 的 draw_block_box() 在 skip 态下，
+     会把已消费的盒子布局塌缩成 y == b（高度 0），但随后仍执行
+         draw_rect(... y0 - padTop, ... y1 + padBot ...)
+     绘制背景 —— y0/y1 已塌缩相等，可 padTop/padBot 仍在，于是画出
+     一条高 = padTop + padBot 的背景矩形，落在每张后续页的页顶。
+     只有「带 background 且带上下 padding」的块会触发，故正文只有
+     blockquote / .toc blockquote 中招。横向 padding 不进入 y 坐标，
+     与色带无关。
+
+   为何用「CSS 侧」修复，而非其它方案（重要，勿回退）
+     1. 改 C 重编 mupdf：约定只用发行版 PyMuPDF，不重编、不打补丁，
+        以免绑定本地构建、丧失可复现性 —— 已否决。
+     2. 切 reflow(convert_to_pdf) 路径用 @page 绕开：等于放弃 Story
+        的真·分页，且换来另一套页边距/几何，与既定版心不一致 —— 已否决。
+     3. 去掉 blockquote 背景：那是设计要的视觉，不能删 —— 已否决。
+
+   修法（最小、纯 CSS、不触发缺陷又保持观感不变）
+     令 blockquote 与 .toc blockquote 的「上下 padding = 0」，把原来
+     的纵向内衬（0.4em）转移到内层 `blockquote p` 的上下 margin。
+     背景仍由父 blockquote 绘制、照常覆盖内衬，视觉几何完全不变；
+     而 skip 态塌缩盒子的 padTop/padBot 归零 ⇒ 幽灵带高度 = 0 ⇒ 根除。
+     横向 padding 保留（左 1em / 右 0.6em），维持左边框留白。
+
+   验证（dist/vol0.pdf，34 页）
+     顶部空白幽灵带：无；全卷 blockquote 背景仅出现在真实文字处，
+     跨页续排的 blockquote 背景与文字对齐。字体嵌入、版心几何不变。
+
+   相关规则见下方带「KB-001」标记的 blockquote / .toc blockquote /
+   blockquote p 三处，修改任一处前务必先读本节。
+   ============================================================ */
+
+@font-face {
+  font-family: "SongtiSC";
+  font-weight: 400;
+  font-style: normal;
+  src: url("__REGULAR_FONT__");
+}
+@font-face {
+  font-family: "SongtiSC";
+  font-weight: 700;
+  font-style: normal;
+  src: url("__BOLD_FONT__");
+}
+
+body {
+  font-family: "SongtiSC", serif;
+  font-size: 12pt;
+  line-height: 2;
+  color: #1d1b17;
+  text-align: justify;
+  background: transparent;
+  margin: 0;
+}
+
+/* 首行缩进：默认关闭（与 browser 管线一致，indent=False，不加 body.indent） */
+body.indent p { text-indent: 2em; }
+
+p {
+  margin: 0 0 0.5em;
+  text-align: justify;
+  orphans: 2;
+  widows: 2;
+}
+
+/* 标题：browser 实测均居中、加粗、宋体 */
+h1, h2, h3 {
+  font-family: "SongtiSC", serif;
+  font-weight: 700;
+  color: #1d1b17;
+  text-align: center;
+}
+
+/* 标题尺寸逆向对齐 browser（book.css）：
+   browser 正文 h1=15pt / h2=13.2pt（居中、h2 带 ◆ 前缀）/ h3=12pt（左对齐），
+   与封面标题（24pt）无关；标题上下留白较大（h1 顶部约 5rem）。 */
+h1 {
+  font-size: 15pt;
+  line-height: 1.6;
+  letter-spacing: 1.5pt;
+  text-align: center;
+  margin: 4em 0 1.5em;
+  break-before: avoid;
+}
+
+h1.cover-title {
+  font-size: 24pt;
+  letter-spacing: 4pt;
+  margin: 140pt 0 0;
+}
+
+h2 {
+  font-size: 13.2pt;
+  line-height: 1.5;
+  letter-spacing: 1pt;
+  text-align: center;
+  margin: 3.2em 0 1em;
+  break-inside: avoid;
+}
+h2::before {
+  /* 用 \A + white-space:pre 强制换行，避免 PyMuPDF 把块级 ::before 渲染到标题下方 */
+  content: "◆\A";
+  white-space: pre;
+  font-size: 6pt;
+  font-weight: 400;
+  margin-bottom: 2pt;
+}
+
+h2.cover-sub {
+  font-size: 11pt;
+  color: #6f685d;
+  letter-spacing: 2pt;
+  margin: 0.6em 0 0;
+}
+h2.cover-sub::before { content: ""; }
+
+h3 {
+  font-size: 12pt;
+  line-height: 1.4;
+  text-align: left;
+  margin: 2.2em 0 0.7em;
+}
+
+/* 目录（来自 book/<vol>/目录.md）：与正文标题同款尺寸，章节去项目符号、缩进 */
+.toc { margin: 0.5em 0; }
+.toc h1 {
+  font-size: 15pt;
+  line-height: 1.6;
+  letter-spacing: 1.5pt;
+  text-align: center;
+  break-before: avoid;
+}
+.toc blockquote {
+  font-size: 11.2pt;
+  color: #5b554c;
+  margin: 0.6em 1.2em;
+  /* KB-001：上下 padding 必须为 0（防跨页幽灵色带），纵向内衬见 blockquote p。
+     详见文件头【已知问题 KB-001】。 */
+  padding: 0 0.6em 0 1em;
+  border-left: 1.5pt solid #8f412d;
+  background: #f8f5f1;
+}
+.toc h2 {
+  font-size: 13.2pt;
+  line-height: 1.5;
+  letter-spacing: 1pt;
+  text-align: center;
+  font-weight: 700;
+  color: #1d1b17;
+  margin: 2.6em 0 0.9em;
+}
+.toc ul { list-style: none; padding-left: 0; }
+.toc li { font-size: 12pt; margin: 0.2em 0; padding-left: 1.6em; }
+
+p.cover-series {
+  text-align: center;
+  text-indent: 0;
+  color: #6f685d;
+  font-size: 9pt;
+  letter-spacing: 1pt;
+  margin-top: 80pt;
+  break-after: page;
+}
+p.cover-date {
+  text-align: center;
+  text-indent: 0;
+  color: #6f685d;
+  font-size: 9pt;
+  letter-spacing: 2pt;
+  margin-top: 0.4em;
+}
+
+/* 强调：browser 中 strong 仅加粗、同色（不再标红） */
+strong, b { font-weight: 700; color: #1d1b17; }
+em, i { font-style: italic; }
+
+blockquote {
+  margin: 0.6em 0 0.6em 1.2em;
+  /* KB-001：上下 padding 必须为 0（防跨页幽灵色带），纵向内衬见 blockquote p。
+     详见文件头【已知问题 KB-001】。 */
+  padding: 0 0.6em 0 1em;
+  border-left: 1.5pt solid #8f412d;
+  background: #f8f5f1;
+  color: #5b554c;
+  font-size: 0.94em;
+}
+/* KB-001：纵向内衬（原 blockquote 上下 padding 0.4em）改由内层 p 的上下 margin 承担；
+   背景由父 blockquote 绘制、仍覆盖此内衬。对正文与 .toc 内的 blockquote 同时生效。 */
+blockquote p { text-indent: 0; margin: 0.4em 0; }
+
+ul, ol { padding-left: 1.6em; }
+li { margin: 0.15em 0; }
+li p { text-indent: 0; }
+
+code {
+  font-family: "SongtiSC", monospace;
+  font-size: 0.88em;
+  background: #f4f1ea;
+  color: #7a3b2e;
+  padding: 0.05em 0.25em;
+  border-radius: 2pt;
+}
+
+hr {
+  width: 40%;
+  margin: 1em auto;
+  border: 0;
+  border-top: 1pt solid #d8d2c6;
+}
+
+table { width: 100%; font-size: 9.5pt; margin: 0.6em 0; }
+th, td { border: 0.5pt solid #d8d2c6; padding: 3pt 6pt; }
+td p, th p { text-indent: 0; margin: 0; }
+
+sup {
+  font-size: .55em;
+  line-height: 0;
+  vertical-align: super;
+}

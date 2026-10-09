@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="{{author}}">
+<title>{{title}} — {{series}}丛书</title>
+<style>{{css}}</style>
+{{extra_css}}
+</head>
+<body class="{{body_cls}}">
+
+<!-- 顶部工具栏 -->
+<div class="toolbar">
+  <span class="brand">{{brand}}</span>
+  <span class="tools">
+    <a class="home" href="{{home_url}}" title="博客首页">⌂ 首页</a>
+    <button id="btn-find" title="全局搜索（⌘K）">⌕ 搜索</button>
+    <button id="btn-dark" title="暗色模式">◐</button>
+  </span>
+</div>
+
+<!-- 阅读进度条 -->
+<div class="progress-bar"></div>
+
+<!-- 文章 -->
+<article class="post">
+  <header class="post-head">
+    <div class="series-label">{{vol_label}}</div>
+    <h1 class="post-title">{{title}}</h1>
+    <div class="byline">
+      <span class="author">{{author}}</span>
+      <span class="sep">·</span>
+      <span class="date">{{pub_date}}</span>
+      <span class="sep">·</span>
+      <span class="reading">约 {{reading_time}} 分钟阅读</span>
+    </div>
+    <div class="tags">{{tags}}</div>
+{{toc_box}}
+  </header>
+
+  <div class="post-body">{{body}}</div>
+
+  <footer class="post-foot">
+    <nav class="pager">{{prev}}{{next}}</nav>
+    <section class="related">
+      <h3>同卷其他章节</h3>
+      <ul>{{related}}</ul>
+    </section>
+    <div class="back"><a href="{{home_url}}">← 返回博客首页</a></div>
+  </footer>
+</article>
+
+{{global_toc}}
+
+<script>{{js}}</script>
+</body>
+</html>

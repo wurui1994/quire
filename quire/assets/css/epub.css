@@ -1,0 +1,31 @@
+/* EPUB 阅读器排版（阅读器会覆盖大部分样式，仅提供基本书籍感） */
+
+body {
+  font-family: "Source Han Serif SC", "Noto Serif CJK SC",
+               "Source Serif 4", serif;
+  line-height: 1.9;
+}
+
+h1 { text-align: center; letter-spacing: 0.18em; margin: 3em 0 2em; }
+h2 { text-align: center; letter-spacing: 0.12em; margin: 2.5em 0 1em; }
+h3 { margin: 1.8em 0 0.6em; }
+
+p { margin: 0; text-align: justify; }
+
+blockquote { margin: 1em 0.5em; color: #666; font-size: 0.94em; }
+blockquote p { text-indent: 0; }
+
+ul, ol { padding-left: 1.6em; }
+li p { text-indent: 0; }
+
+hr { width: 40%; margin: 3em auto; border: none; border-top: 1px solid #ccc; }
+
+sup {
+  font-size: .65em;
+  line-height: 0;
+  vertical-align: super;
+}
+
+table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+th, td { border: 1px solid #ccc; padding: 0.4em 0.6em; }
+td p, th p { text-indent: 0; }

@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quire"
+version = "0.1.0"
+description = "Markdown 书籍构建工具链：HTML 阅读本 / EPUB3 / 排版 PDF / 博客 / 本地预览"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "wurui" }]
+keywords = ["book", "markdown", "epub", "pdf", "publishing", "mdbook", "sphinx"]
+
+dependencies = [
+    "markdown-it-py",
+    "mdit-py-plugins",
+    "ebooklib",
+    "PyMuPDF",
+    "fonttools",
+    "rich",
+    "flask",
+    "tomli; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+# browser PDF 引擎（--pdf-engine browser）与 mathml 渲染需要
+browser = ["playwright"]
+# macOS 系统字体枚举（CoreText）更准；缺失时回退文件系统扫描
+macos = ["pyobjc-framework-CoreText; sys_platform == 'darwin'"]
+# pandoc EPUB 引擎（--epub-engine pandoc）为可选外部二进制，无需 pip 包
+dev = ["pytest"]
+
+[project.scripts]
+quire = "quire.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["quire*"]
+
+[tool.setuptools.package-data]
+quire = [
+    "assets/templates/*.html",
+    "assets/css/*.css",
+    "assets/js/*.js",
+    "assets/translations/*.yaml",
+]

@@ -1,0 +1,304 @@
+/* ============================================================
+   卷封面 · 「约束场」设计
+   ------------------------------------------------------------
+   理念（对应丛书核心隐喻「锁与自由度」）：
+   · 点阵网格   = 结构化的空间，自由是其中的向量
+   · 七层同心环 = 七层锁（身体→心智→关系→制度→技术→死亡→实践）
+                  从外到内 stroke-opacity 递增、尺寸递减
+   · 中心光晕   = 可达集（约束围出的、可以抵达的空间）
+   · 上行射线   = 自由度向量（从可达集向外突破）
+   · 耦合链     = 层与层并不独立，彼此牵连
+   几何全部由 SVG 绘制，颜色继承主题变量，随暗色模式自适应。
+   ============================================================ */
+
+.cover {
+  --cover-sans: -apple-system, "Helvetica Neue", "PingFang SC",
+                "Source Han Sans SC", "Noto Sans CJK SC", sans-serif;
+  position: relative;
+  min-height: 94vh;
+  display: flex;
+  overflow: hidden;
+  margin: 0 0 5rem;
+  padding: 0;
+  border: none;
+  background:
+    radial-gradient(120% 80% at 50% 8%,
+      color-mix(in srgb, var(--accent) 5%, transparent) 0%,
+      transparent 55%);
+}
+
+/* 合订本：每卷封面之前（即上一卷卷尾之后）留出充足间距，
+   避免卷尾正文紧贴下一卷封面。首卷封面为 .main 首个子元素，
+   不受此规则影响，不会被额外下推。 */
+.main > * + section.cover { margin-top: 8rem; }
+
+/* ── 几何：SVG 约束场 ── */
+
+.cover-field {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.cover-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.cover-svg .grid-dot { fill: var(--accent); opacity: .05; }
+
+.cover-svg .ring {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.cover-svg .ring-1 { stroke-opacity: .07; }
+.cover-svg .ring-2 { stroke-opacity: .10; }
+.cover-svg .ring-3 { stroke-opacity: .13; }
+.cover-svg .ring-4 { stroke-opacity: .17; }
+.cover-svg .ring-5 { stroke-opacity: .22; }
+.cover-svg .ring-6 { stroke-opacity: .28; }
+.cover-svg .ring-7 { stroke-opacity: .36; }
+
+.cover-svg .ring.active {
+  stroke-opacity: .85;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--accent) 55%, transparent));
+}
+
+/* 可达集：中心光晕 + 核心点 */
+.cover-svg .reach-0 { stop-color: var(--accent); stop-opacity: .28; }
+.cover-svg .reach-1 { stop-color: var(--accent); stop-opacity: .08; }
+.cover-svg .reach-2 { stop-color: var(--accent); stop-opacity: 0; }
+.cover-svg .reachable { }
+.cover-svg .core {
+  fill: var(--accent);
+  opacity: .55;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 60%, transparent));
+}
+
+/* 耦合链 */
+.cover-svg .coupling-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-opacity: .16;
+  vector-effect: non-scaling-stroke;
+}
+.cover-svg .coupling-node { fill: var(--accent); opacity: .30; }
+
+/* 自由度向量 */
+.cover-svg .ray-main {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-opacity: .5;
+  vector-effect: non-scaling-stroke;
+}
+.cover-svg .ray-sec {
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-opacity: .2;
+  stroke-dasharray: 3 6;
+  vector-effect: non-scaling-stroke;
+}
+.cover-svg .ray-head { fill: var(--accent); opacity: .6; }
+
+/* ── 排版骨架 ── */
+
+.cover-frame {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 7vh 2rem 6vh;
+  text-align: center;
+}
+
+/* 顶部：丛书标签 + 卷号 */
+.cover-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  font-family: var(--cover-sans);
+}
+.cover-series {
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .42em;
+  text-indent: .42em;
+  color: var(--accent);
+  opacity: .8;
+}
+.cover-tag {
+  font-size: .64rem;
+  font-weight: 500;
+  letter-spacing: .28em;
+  text-indent: .28em;
+  color: var(--muted);
+  padding: .38em 1em .38em 1.1em;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 2px;
+}
+.cover-tag:empty { display: none; }
+
+/* 中部：卷号水印 + 主标题 + 分隔 + 副题 */
+.cover-mid {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+  padding: 2rem 0;
+}
+.cover-glyph {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -58%);
+  font-family: Georgia, "Songti SC", "Source Han Serif SC", serif;
+  font-size: clamp(11rem, 34vh, 20rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+  opacity: .07;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+}
+
+.cover .cover-title {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-size: clamp(2rem, 6.4vw, 3.4rem);
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: .16em;
+  text-indent: .16em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.cover .cover-title::before { content: none; }
+
+.cover-rule {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .8rem;
+  margin: 1.6rem 0 1.4rem;
+}
+.cover-rule-line {
+  display: block;
+  width: 2.4rem;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent, color-mix(in srgb, var(--accent) 65%, transparent));
+}
+.cover-rule-line:last-child {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--accent) 65%, transparent), transparent);
+}
+.cover-rule-mark {
+  display: block;
+  width: 6px;
+  height: 6px;
+  transform: rotate(45deg);
+  background: var(--accent);
+  opacity: .7;
+}
+
+.cover-subtitle {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-family: var(--cover-sans);
+  font-size: .92rem;
+  font-weight: 400;
+  letter-spacing: .28em;
+  text-indent: .28em;
+  color: var(--muted);
+}
+.cover-subtitle:empty { display: none; }
+
+/* 底部：进度条 + 署名 */
+.cover-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6rem;
+  width: 100%;
+}
+.cover-progress {
+  display: flex;
+  align-items: center;
+  gap: .5em;
+}
+.cover-progress .tick {
+  display: block;
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  opacity: .16;
+  transition: none;
+}
+.cover-progress .tick.active {
+  width: 30px;
+  height: 3px;
+  opacity: .75;
+}
+
+.cover-byline {
+  font-family: var(--cover-sans);
+  font-size: .76rem;
+  letter-spacing: .24em;
+  text-indent: .24em;
+  color: var(--muted);
+}
+.cover-author { color: var(--ink); font-weight: 600; }
+.cover-sep { margin: 0 .5em; opacity: .5; }
+.cover-date { opacity: .8; }
+
+/* ── 响应式 ── */
+@media (max-width: 680px) {
+  .cover { min-height: 86vh; }
+  .cover-frame { max-width: 100%; padding: 6vh 1.4rem 5vh; }
+  .cover .cover-title { letter-spacing: .1em; text-indent: .1em; }
+  .cover-glyph { font-size: clamp(8rem, 28vh, 13rem); }
+  .cover-series { font-size: .6rem; letter-spacing: .3em; }
+}
+
+/* ── 暗色模式 ── */
+body.dark .cover {
+  background:
+    radial-gradient(120% 80% at 50% 8%,
+      color-mix(in srgb, var(--accent) 9%, transparent) 0%,
+      transparent 55%);
+}
+body.dark .cover-svg .grid-dot { opacity: .06; }
+body.dark .cover-svg .ring-1 { stroke-opacity: .09; }
+body.dark .cover-svg .ring-2 { stroke-opacity: .12; }
+body.dark .cover-svg .ring-3 { stroke-opacity: .16; }
+body.dark .cover-svg .ring-4 { stroke-opacity: .20; }
+body.dark .cover-svg .ring-5 { stroke-opacity: .26; }
+body.dark .cover-svg .ring-6 { stroke-opacity: .33; }
+body.dark .cover-svg .ring-7 { stroke-opacity: .42; }
+body.dark .cover-svg .ring.active { stroke-opacity: .9; }
+body.dark .cover-svg .reach-0 { stop-opacity: .34; }
+body.dark .cover-glyph { opacity: .09; }
