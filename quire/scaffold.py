@@ -92,7 +92,8 @@ def init_project(path: str = ".", *, title: Optional[str] = None,
     vol_dir = root / "book" / "vol1"
     (vol_dir / "chapters").mkdir(parents=True, exist_ok=True)
     (vol_dir / "目录.md").write_text(
-        f"# 《{project_title}》（卷一）目录\n", encoding="utf-8")
+        f"# 《{project_title}》（卷一）目录\n\n"
+        "- [开篇](chapters/ch01-开篇.md)\n", encoding="utf-8")
     (vol_dir / "chapters" / "ch01-开篇.md").write_text(
         "# 开篇\n\n", encoding="utf-8")
     return root

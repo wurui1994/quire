@@ -11,11 +11,12 @@ from typing import List
 
 from . import config
 from .config import fill_template
-from .renderer import render_markdown
+from .renderer import render_markdown, anchor_link_map
 from .toc import (extract_headings, build_single_volume_toc_html,
                          build_all_volumes_toc_html)
 from .cover import build_cover_html
-from .model import Volume, standard_volume_count, volume_index_map
+from .model import (Volume, all_volume_files, standard_volume_count,
+                    volume_index_map)
 
 ALL_HTML_EXTRA_CSS = (
     ".toc-link-vol{padding:.2rem 0;font-weight:600}"
@@ -39,7 +40,7 @@ def assemble_reader_page(*, title: str, brand: str, body: str, toc_html: str,
 def build_volume_html(volume: Volume, *, indent: bool = False,
                       vol_index: int = -1, total_vols: int = 0) -> Path:
     """构建单卷 HTML 阅读页 → dist/{id}.html。"""
-    fragment = render_markdown(volume.files)
+    fragment = render_markdown(volume.files, link_map=anchor_link_map(volume.files))
     cover = build_cover_html(volume.id, volume.title, volume.subtitle,
                              vol_index=vol_index, total_vols=total_vols,
                              is_preface=volume.is_preface)
@@ -58,10 +59,11 @@ def render_all_reader(volumes: List[Volume], *, indent: bool = False) -> str:
     """全卷合本 HTML 字符串（构建与预览服务器共用）。"""
     total_vols = standard_volume_count(volumes)
     index_map = volume_index_map(volumes)
+    link_map = anchor_link_map(all_volume_files(volumes))
     all_fragments: List[str] = []
     volume_headings = []
     for volume in volumes:
-        fragment = render_markdown(volume.files)
+        fragment = render_markdown(volume.files, link_map=link_map)
         cover = build_cover_html(volume.id, volume.title, volume.subtitle,
                                  vol_index=index_map.get(volume.id, -1),
                                  total_vols=total_vols, is_preface=volume.is_preface)

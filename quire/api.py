@@ -215,7 +215,8 @@ def build(book: Book, *, volumes: Optional[List[str]] = None,
                 outputs.append(all_pdf_path)
                 note(f"  all.pdf               {all_pdf_path.stat().st_size/1000:>8.0f} KB  ⏱ {elapsed:.1f}s")
 
-        if with_html and mode == "blog":
+        if mode == "blog" and html:
+            # 博客模式的文章页/首页（with_html 仅指 book 模式的分卷阅读页）
             from .blog import build_blog
             build_blog(selected)
             note("· 博客模式：dist/blog/ 已生成")

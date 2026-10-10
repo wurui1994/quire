@@ -4,14 +4,19 @@
 - markdown-it-py 实例构建（含脚注 / 定义列表 / 锚点 / 行内数学插件）
 - 渲染前预处理：中文弯引号、Pandoc 风格上标
 - 渲染中修复：AI 中文紧贴加粗（core rule，见 _repair_failed_strong）
+- 渲染中改写：站内 .md 相对链接 → link_map 给定的目标 URL（core rule，
+  见 _resolve_internal_links；目录页链接章节的标准写法由此落地）
 - 渲染后处理：dollarmath 占位 span/div → MathML（默认，浏览器/EPUB 用）
   或 HTML 上/下标（fitz PDF 用，因其 Story 引擎不支持 MathML）
 - 标题 slug 生成
+- anchor_link_map：源文件 → 页内锚点映射（供卷页/合本页改写 .md 链接）
 """
 
+import posixpath
 import re
 import unicodedata
-from typing import List
+from typing import Dict, List, Optional
+from urllib.parse import unquote
 
 from . import config
 from .progress import report_file
@@ -39,6 +44,7 @@ def get_markdown_renderer():
     anchors_plugin(md, min_level=1, max_level=3)
     dollarmath_plugin(md)
     md.core.ruler.after("inline", "repair_failed_strong", _repair_failed_strong)
+    md.core.ruler.after("inline", "resolve_internal_links", _resolve_internal_links)
     _MDIT = md
     return _MDIT
 
@@ -110,6 +116,86 @@ def _repair_failed_strong(state) -> None:
                 new_children.append(child)
         if touched:
             block.children = new_children
+
+
+# --------------------------------------------------------------- 站内 .md 链接改写
+
+_ATX_HEADING = re.compile(r"^#{1,6}(?:\s+(.+))?$")
+
+
+def _resolve_md_href(href: str, base_dir: str) -> Optional[str]:
+    """站内 .md 相对链接 → 相对仓库根的源文件路径；其余（外链/锚点/图片）返回 None。
+
+    markdown-it 输出的 href 已按 normalizeLink 百分号编码（中文文件名
+    变成 %E5%9F%97 之类），查表前先解码。
+    """
+    if not href or "://" in href or href.startswith(("#", "mailto:", "tel:")):
+        return None
+    path = href.split("#", 1)[0].split("?", 1)[0]
+    if not path.lower().endswith(".md"):
+        return None
+    return posixpath.normpath(posixpath.join(base_dir, unquote(path)))
+
+
+def _resolve_internal_links(state) -> None:
+    """markdown-it core rule：把目录页等处的 .md 相对链接改写为站内目标 URL。
+
+    env 由 render_markdown 传入：link_map={源文件: 目标URL}（页内锚点、
+    /p/ 路由或 EPUB 同级文档），base_dir=当前文件所在目录（相对仓库根）。
+    相对链接按当前文件目录解析；未命中映射的外部/跨卷链接保持原样。
+    """
+    link_map = (getattr(state, "env", None) or {}).get("link_map")
+    if not link_map:
+        return
+    base_dir = state.env.get("base_dir", "")
+    for block in state.tokens:
+        children = getattr(block, "children", None)
+        if not children:
+            continue
+        for child in children:
+            if child.type != "link_open":
+                continue
+            resolved = _resolve_md_href(child.attrGet("href") or "", base_dir)
+            if resolved is not None and resolved in link_map:
+                child.attrSet("href", link_map[resolved])
+
+
+def _first_heading_id(relpath: str) -> str:
+    """渲染文件首个 ATX 标题，取其锚点 id。
+
+    锚点 id 只由标题文本决定（anchors 插件对首个标题无去重后缀），
+    故单独渲染标题行与整文件渲染结果一致。代码围栏内的 # 行不算标题。
+    """
+    md = get_markdown_renderer()
+    in_fence = False
+    for line in (config.ROOT / relpath).read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith(("```", "~~~")):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        match = _ATX_HEADING.match(stripped)
+        if not match:
+            continue
+        html = md.render(normalize_cjk_quotes(preprocess_superscript(stripped)))
+        found = re.search(r'<h[1-6] id="([^"]+)"', html)
+        return found.group(1) if found else ""
+    return ""
+
+
+def anchor_link_map(files: List[str]) -> Dict[str, str]:
+    """文件列表 → {源文件路径: "#锚点id"}。
+
+    供单卷页 / 全卷合本页把目录页里的 .md 链接改写为页内锚点
+    （与侧栏目录同一套锚点）。无标题的文件不进映射（链接保持原样）。
+    """
+    mapping: Dict[str, str] = {}
+    for relpath in files:
+        heading_id = _first_heading_id(relpath)
+        if heading_id:
+            mapping[relpath] = f"#{heading_id}"
+    return mapping
 
 
 def normalize_cjk_quotes(source: str) -> str:
@@ -287,10 +373,13 @@ def _convert_latex_to_mathml(html: str) -> str:
         replace, html, flags=re.DOTALL)
 
 
-def render_markdown(files: List[str], *, math_format: str = "html") -> str:
+def render_markdown(files: List[str], *, math_format: str = "html",
+                    link_map: Optional[Dict[str, str]] = None) -> str:
     """将多个 md 文件（相对 config.ROOT 的路径）分别渲染后拼接为 HTML 片段。
 
     各文件独立渲染，保证每个文件的 H1 都能生成锚点 id。
+    link_map: {源文件路径: 目标URL}，命中时把该文件内容里的 .md 相对
+    链接改写为页内锚点 / 站内路由 / EPUB 文档（见 _resolve_internal_links）。
     """
     # print("math_format", math_format)
     md = get_markdown_renderer()
@@ -299,7 +388,11 @@ def render_markdown(files: List[str], *, math_format: str = "html") -> str:
         source = (config.ROOT / relpath).read_text(encoding="utf-8")
         source = normalize_cjk_quotes(source)
         source = preprocess_superscript(source)
-        fragments.append(md.render(source))
+        if link_map is not None:
+            env = {"link_map": link_map, "base_dir": posixpath.dirname(relpath)}
+            fragments.append(md.render(source, env))
+        else:
+            fragments.append(md.render(source))
         report_file(relpath)
     joined = "".join(fragments)
     if math_format == "html":

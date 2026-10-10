@@ -96,10 +96,13 @@ def _chapter_xhtml(title: str, body: str) -> str:
     return _xhtml_doc(title, 'epub:type="bodymatter"', body)
 
 
-def _render_volume_chapters(volume: Volume) -> List[Tuple[str, str, List]]:
+def _render_volume_chapters(volume: Volume,
+                            link_map: dict = None) -> List[Tuple[str, str, List]]:
+    """逐文件渲染为章节 XHTML。link_map 把目录页 .md 链接改写为
+    同级文档 href（如 ch001.xhtml；EPUB 内所有章节文档平铺于 text/）。"""
     results = []
     for relpath in volume.files:
-        md = render_markdown([relpath], math_format="html")
+        md = render_markdown([relpath], math_format="html", link_map=link_map)
         headings = extract_headings(md)
         title = headings[0][2] if headings else Path(relpath).stem
         xhtml = _chapter_xhtml(title, md)
@@ -232,7 +235,9 @@ def build_epub_py(volume: Volume) -> Path:
         title=title,
         raw_content=_title_page_xhtml(title, config.AUTHOR, config.PUB_DATE).encode("utf-8"))
 
-    chapters_data = _render_volume_chapters(volume)
+    chapters_data = _render_volume_chapters(
+        volume, {relpath: f"ch{i:03d}.xhtml"
+                 for i, relpath in enumerate(volume.files, 1)})
     chapters: List[_RawXhtml] = []
     for i, (ch_title, ch_xhtml, _) in enumerate(chapters_data, 1):
         ch = _RawXhtml(
@@ -277,9 +282,12 @@ def build_all_epub_py(volumes: List[Volume]) -> Path:
     toc = []
     ch_counter = 0
     last_vol_headings = []
+    # 全卷 EPUB 文档跨卷连续编号，故映射一次算好（与下方 ch_counter 同序）
+    doc_map = {relpath: f"ch{index:03d}.xhtml"
+               for index, relpath in enumerate(all_volume_files(volumes), 1)}
 
     for volume in volumes:
-        vol_chapters = _render_volume_chapters(volume)
+        vol_chapters = _render_volume_chapters(volume, doc_map)
         vol_toc_children = []
         for ch_title, ch_xhtml, headings in vol_chapters:
             ch_counter += 1

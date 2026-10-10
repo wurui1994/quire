@@ -46,6 +46,12 @@ def main() -> None:
         names = [Path(f).name for f in book.volumes[0].files]
         assert names == ["目录.md", "ch01-开篇.md", "ch02-第二章.md"], names
 
+        # 目录页补 ch02 链接（标准写法：相对 chapters/ 的 .md 链接）
+        (root / "book" / "vol1" / "目录.md").write_text(
+            "# 《测试书》（卷一）目录\n\n"
+            "- [开篇](chapters/ch01-开篇.md)\n"
+            "- [第二章标题](chapters/ch02-第二章.md)\n", encoding="utf-8")
+
         # 4) 构建（HTML + EPUB；PDF 依赖系统字体，冒烟不覆盖）
         outputs = build(book, html=True, epub=True, pdf=False, show_progress=False)
         names = sorted(p.name for p in outputs)
@@ -61,7 +67,18 @@ def main() -> None:
         assert "**不是加粗**" in html
         assert "<code>**代码**</code>" in html
         assert "a ** b ** c" in html
+        # 站内 .md 相对链接 → 同页锚点（与侧栏目录同一套标题 id）
+        assert '<a href="#开篇">开篇</a>' in html
+        assert '<a href="#第二章标题">第二章标题</a>' in html
+        assert "chapters/ch01-开篇.md" not in html
         assert (book.dist / "vol1.epub").stat().st_size > 1000
+        # EPUB：目录文档（ch001）里的链接 → 同级章节文档
+        import zipfile
+        with zipfile.ZipFile(book.dist / "vol1.epub") as zf:
+            toc_doc = zf.read("EPUB/text/ch001.xhtml").decode("utf-8")
+        assert 'href="ch002.xhtml"' in toc_doc      # ch01-开篇.md → ch002.xhtml
+        assert 'href="ch003.xhtml"' in toc_doc      # ch02-第二章.md → ch003.xhtml
+        assert "chapters/ch01-开篇.md" not in toc_doc
 
         # 5) CLI：list（子进程，验证 python -m quire 入口与 -d 定位）
         proc = subprocess.run(

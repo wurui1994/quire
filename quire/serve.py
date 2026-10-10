@@ -10,7 +10,7 @@ from typing import Dict, List, Tuple
 
 from . import config
 from .config import fill_template
-from .renderer import render_markdown
+from .renderer import render_markdown, anchor_link_map
 from .toc import (extract_headings, build_single_volume_toc_html,
                          build_all_volumes_toc_html)
 from .cover import build_cover_html
@@ -52,7 +52,7 @@ class PreviewServer:
         current = self._file_mtimes(volume.files)
         if volume_id in self.fragment_cache and self.fragment_cache[volume_id][2] == current:
             return self.fragment_cache[volume_id][0], self.fragment_cache[volume_id][1]
-        fragment = render_markdown(volume.files)
+        fragment = render_markdown(volume.files, link_map=anchor_link_map(volume.files))
         headings = extract_headings(fragment)
         self.fragment_cache[volume_id] = (fragment, headings, current)
         return fragment, headings
@@ -95,7 +95,9 @@ class PreviewServer:
             return self.page_cache[cache_key][0]
 
         source = (config.ROOT / target).read_text(encoding="utf-8")
-        fragment = render_markdown([target])
+        post_link_map = {file: f"/p/{vol.id}--{Path(file).stem}.html"
+                         for vol in volumes for file in vol.files}
+        fragment = render_markdown([target], link_map=post_link_map)
         title, body = strip_first_h1(fragment)
         headings = extract_headings(body)
         tags = extract_tags(body)

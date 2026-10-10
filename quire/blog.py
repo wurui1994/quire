@@ -100,11 +100,14 @@ def build_global_toc(posts: List[Dict], prefix: str) -> str:
 
 def build_blog(volumes: List[Volume]) -> None:
     """每篇 md 独立成页 → dist/blog/{volume_id}--{slug}.html，并生成博客首页。"""
+    # 文间链接映射：目录页等处的 .md 相对链接 → 同目录文章页文件名
+    link_map = {relpath: f"{volume.id}--{Path(relpath).stem}.html"
+                for volume in volumes for relpath in volume.files}
     posts: List[Dict] = []
     for volume in volumes:
         for relpath in volume.files:
             source = (config.ROOT / relpath).read_text(encoding="utf-8")
-            fragment = render_markdown([relpath])
+            fragment = render_markdown([relpath], link_map=link_map)
             title, body = strip_first_h1(fragment)
             headings = extract_headings(body)
             tags = extract_tags(body)
